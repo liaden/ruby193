@@ -2206,7 +2206,7 @@ def init_mkmf(config = CONFIG, rbconfig = RbConfig::CONFIG)
   $LOCAL_LIBS = ""
 
   $cleanfiles = config_string('CLEANFILES') {|s| Shellwords.shellwords(s)} || []
-  $cleanfiles << "mkmf.log"
+  $cleanfiles << "mkmf.log .*.time"
   $distcleanfiles = config_string('DISTCLEANFILES') {|s| Shellwords.shellwords(s)} || []
   $distcleandirs = config_string('DISTCLEANDIRS') {|s| Shellwords.shellwords(s)} || []
 
