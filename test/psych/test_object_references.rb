@@ -28,14 +28,14 @@ module Psych
 
     def assert_reference_trip obj
       yml = Psych.dump([obj, obj])
-      assert_match(/\*\d+/, yml)
+      assert_match(/\*-?\d+/, yml)
       data = Psych.load yml
       assert_equal data.first.object_id, data.last.object_id
     end
 
     def test_float_references
       data = Psych.load <<-eoyml
---- 
+---\s
 - &name 1.2
 - *name
       eoyml
@@ -56,7 +56,7 @@ module Psych
 
     def test_regexp_references
       data = Psych.load <<-eoyml
---- 
+---\s
 - &name !ruby/regexp /pattern/i
 - *name
       eoyml
