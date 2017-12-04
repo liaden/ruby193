@@ -554,7 +554,7 @@ raise_method_missing(rb_thread_t *th, int argc, const VALUE *argv, VALUE obj,
 	exc = rb_class_new_instance(n, args, exc);
 
 	if (!(last_call_status & NOEX_MISSING)) {
-	    th->cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(th->cfp);
+	    rb_frame_pop();
 	}
 	rb_exc_raise(exc);
     }

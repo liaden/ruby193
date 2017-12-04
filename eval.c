@@ -823,7 +823,12 @@ rb_frame_caller(void)
 void
 rb_frame_pop(void)
 {
+    ID mid;
+    VALUE klass;
     rb_thread_t *th = GET_THREAD();
+    if (rb_thread_method_id_and_class(th, &mid, &klass)) {
+        EXEC_EVENT_HOOK(th, RUBY_EVENT_C_RETURN, klass, mid, klass);
+    }
     th->cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(th->cfp);
 }
 

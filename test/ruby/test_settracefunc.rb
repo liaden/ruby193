@@ -389,6 +389,91 @@ class TestSetTraceFunc < Test::Unit::TestCase
     assert_equal(self, ok, bug3921)
   end
 
+  def test_const_missing
+    bug59398 = '[ruby-core:59398]'
+    events = []
+    assert !defined?(MISSING_CONSTANT_59398)
+    eval <<-EOF.gsub(/^.*?: /, "")
+     1: set_trace_func(Proc.new { |event, file, lineno, mid, binding, klass|
+     2:   events << [event, mid, klass] if event =~ /call|return/ && mid.to_s =~ /const_missing/
+     3: })
+     4: MISSING_CONSTANT_59398 rescue nil
+     5: set_trace_func(nil)
+    EOF
+    if events.map{|e|e[1]}.include?(:rake_original_const_missing)
+      assert_equal([
+        ["call", :const_missing, Module],
+        ["c-call", :rake_original_const_missing, Module],
+        ["c-return", :const_missing, Module],  # 1.9.3 misses frame_called_id() and therefore reports the wrong method
+        ["return", :const_missing, Module]
+      ], events, bug59398)
+    else
+      assert_equal([
+        ["c-call", :const_missing, Module],
+        ["c-return", :const_missing, Module]
+      ], events, bug59398)
+    end
+  end
+
+  def test_aliased_ruby_method
+    events = []
+    eval <<-EOF.gsub(/^.*?: /, "")
+     1: class AliasedRubyMethod
+     2:   def foo; 1; end;
+     3:   alias bar foo
+     4: end
+     5: aliased = AliasedRubyMethod.new
+     6: set_trace_func(Proc.new { |event, file, lineno, mid, binding, klass|
+     7:   events << [event, lineno, mid, klass] if event =~ /^(call|return)/
+     8: })
+     9: aliased.bar
+     10: set_trace_func(nil)
+    EOF
+    assert_equal([
+      ["call", 2, :foo, TestSetTraceFunc::AliasedRubyMethod],
+      ["return", 2, :foo, TestSetTraceFunc::AliasedRubyMethod]
+    ], events, "should use original method name for tracing ruby methods")
+  end
+
+  def test_aliased_c_method
+    events = []
+    eval <<-EOF.gsub(/^.*?: /, "")
+     1: class AliasedCMethod < Hash
+     2:   alias original_size size
+     3:   def size; original_size; end
+     4: end
+     5: aliased = AliasedCMethod.new
+     6: set_trace_func(Proc.new { |event, file, lineno, mid, binding, klass|
+     7:   events << [event, lineno, mid, klass] if event =~ /call|return/ && klass == TestSetTraceFunc::AliasedCMethod
+     8: })
+     9: aliased.size
+     10: set_trace_func(nil)
+    EOF
+    assert_equal([
+      ["call", 3, :size, TestSetTraceFunc::AliasedCMethod],
+      ["c-call", 3, :original_size, TestSetTraceFunc::AliasedCMethod],
+      ["c-return", 3, :original_size, TestSetTraceFunc::AliasedCMethod],
+      ["return", 3, :size, TestSetTraceFunc::AliasedCMethod]
+    ], events, "should use alias method name for tracing c methods")
+  end
+
+  def test_method_missing
+    bug59398 = '[ruby-core:59398]'
+    events = []
+    assert !respond_to?(:missing_method_59398)
+    eval <<-EOF.gsub(/^.*?: /, "")
+     1: set_trace_func(Proc.new { |event, file, lineno, mid, binding, klass|
+     2:   events << [event, mid, klass] if event =~ /call|return/ && mid.to_s =~ /method_missing/
+     3: })
+     4: missing_method_59398 rescue nil
+     5: set_trace_func(nil)
+    EOF
+    assert_equal([
+      ["c-call", :method_missing, BasicObject],
+      ["c-return", :method_missing, BasicObject]
+    ], events, bug59398)
+  end
+
   class << self
     define_method(:method_added, Module.method(:method_added))
   end
