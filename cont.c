@@ -48,6 +48,7 @@
 #define RB_PAGE_MASK (~(RB_PAGE_SIZE - 1))
 static long pagesize;
 #define FIBER_MACHINE_STACK_ALLOCATION_SIZE  (0x10000)
+static int fiber_machine_stack_allocation_size = FIBER_MACHINE_STACK_ALLOCATION_SIZE;
 #endif
 
 #define CAPTURE_JUST_VALID_VM_STACK 1
@@ -620,7 +621,7 @@ fiber_setcontext(rb_fiber_t *newfib, rb_fiber_t *oldfib)
     rb_thread_t *th = GET_THREAD(), *sth = &newfib->cont.saved_thread;
 
     if (newfib->status != RUNNING) {
-	fiber_initialize_machine_stack_context(newfib, FIBER_MACHINE_STACK_ALLOCATION_SIZE);
+	fiber_initialize_machine_stack_context(newfib, fiber_machine_stack_allocation_size);
     }
 
     /* restore thread context */
@@ -1000,6 +1001,39 @@ rb_cont_call(int argc, VALUE *argv, VALUE contval)
  */
 
 #define FIBER_VM_STACK_SIZE (4 * 1024)
+static int fiber_vm_stack_size = FIBER_VM_STACK_SIZE;
+
+void
+rb_fiber_set_stack_params(void)
+{
+    char *envp;
+
+    if (rb_safe_level() > 0) return;
+
+#if FIBER_USE_NATIVE
+    envp = getenv("RUBY_FIBER_MACHINE_STACK_SIZE");
+    if (envp != NULL) {
+	int machine_stack_allocation_size = atoi(envp);
+	if (machine_stack_allocation_size > 0) {
+            fiber_machine_stack_allocation_size = 1024*machine_stack_allocation_size;
+	}
+	if (RTEST(ruby_verbose))
+	    fprintf(stderr, "fiber_machine_stack_size=%dKB (%dKB)\n",
+		    fiber_machine_stack_allocation_size/1024, FIBER_MACHINE_STACK_ALLOCATION_SIZE/1024);
+    }
+#endif
+
+    envp = getenv("RUBY_FIBER_VM_STACK_SIZE");
+    if (envp != NULL) {
+	int vm_stack_size = atoi(envp);
+	if (vm_stack_size > 0) {
+            fiber_vm_stack_size = 1024*vm_stack_size;
+	}
+	if (RTEST(ruby_verbose))
+	    fprintf(stderr, "fiber_vm_stack_size=%dKB (%dKB)\n",
+		    fiber_vm_stack_size/1024, FIBER_VM_STACK_SIZE/1024);
+    }
+}
 
 static const rb_data_type_t fiber_data_type = {
     "fiber",
