@@ -1308,6 +1308,15 @@ class TestProcess < Test::Unit::TestCase
       assert_equal("ok?\n", data)
     end
 
+    def test_daemon_pid
+      cpid, dpid = IO.popen("-", "r+") do |f|
+        break f.pid, Integer(f.read) if f
+        Process.daemon(false, true)
+        puts $$
+      end
+      assert_not_equal(cpid, dpid)
+    end
+
     if File.directory?("/proc/self/task")
       def test_daemon_no_threads
         pid, data = IO.popen("-", "r+") do |f|
