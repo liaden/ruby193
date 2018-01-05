@@ -378,7 +378,13 @@ putstring
 ()
 (VALUE val)
 {
+    if(RUBY_DTRACE_OBJECT_CREATE_START_ENABLED()) {
+        RUBY_DTRACE_OBJECT_CREATE_START("String", rb_sourcefile(), rb_sourceline());
+    }
     val = rb_str_resurrect(str);
+    if(RUBY_DTRACE_OBJECT_CREATE_DONE_ENABLED()) {
+        RUBY_DTRACE_OBJECT_CREATE_DONE("String", rb_sourcefile(), rb_sourceline());
+    }
 }
 
 /**
@@ -450,7 +456,16 @@ newarray
 (...)
 (VALUE val) // inc += 1 - num;
 {
+    if(RUBY_DTRACE_OBJECT_CREATE_START_ENABLED()) {
+        RUBY_DTRACE_OBJECT_CREATE_START("Array", rb_sourcefile(), rb_sourceline());
+    }
+
     val = rb_ary_new4((long)num, STACK_ADDR_FROM_TOP(num));
+
+    if(RUBY_DTRACE_OBJECT_CREATE_DONE_ENABLED()) {
+        RUBY_DTRACE_OBJECT_CREATE_DONE("Array", rb_sourcefile(), rb_sourceline());
+    }
+
     POPN(num);
 }
 
@@ -592,7 +607,16 @@ newhash
 (VALUE val) // inc += 1 - num;
 {
     rb_num_t i;
+
+    if(RUBY_DTRACE_OBJECT_CREATE_START_ENABLED()) {
+        RUBY_DTRACE_OBJECT_CREATE_START("Hash", rb_sourcefile(), rb_sourceline());
+    }
+
     val = rb_hash_new();
+
+    if(RUBY_DTRACE_OBJECT_CREATE_DONE_ENABLED()) {
+        RUBY_DTRACE_OBJECT_CREATE_DONE("Hash", rb_sourcefile(), rb_sourceline());
+    }
 
     for (i = num; i > 0; i -= 2) {
 	const VALUE v = TOPN(i - 2);
@@ -815,7 +839,7 @@ defined
 
 	    args[0] = obj; args[1] = Qfalse;
 	    r = rb_check_funcall(v, rb_intern("respond_to_missing?"), 2, args);
-	    if (r != Qundef && RTEST(r)) 
+	    if (r != Qundef && RTEST(r))
 		expr_type = "method";
 	}
 	break;
@@ -875,6 +899,40 @@ trace
 {
     rb_event_flag_t flag = (rb_event_flag_t)nf;
 
+    if (RUBY_DTRACE_LINE_ENABLED()) {
+        if (flag == RUBY_EVENT_LINE) {
+            RUBY_DTRACE_LINE(rb_sourcefile(), rb_sourceline());
+        }
+    }
+
+    if (RUBY_DTRACE_FUNCTION_ENTRY_ENABLED()) {
+        if (flag == RUBY_EVENT_CALL || flag == RUBY_EVENT_C_CALL) {
+          VALUE klass;
+          ID called_id;
+
+          rb_thread_method_id_and_class(th, &called_id, &klass);
+
+          RUBY_DTRACE_FUNCTION_ENTRY(
+                  RSTRING_PTR(rb_inspect(klass)),
+                  rb_id2name(called_id),
+                  rb_sourcefile(),
+                  rb_sourceline());
+        }
+    }
+    if (RUBY_DTRACE_FUNCTION_RETURN_ENABLED()) {
+        if (flag == RUBY_EVENT_RETURN || flag == RUBY_EVENT_C_RETURN) {
+          VALUE klass;
+          ID called_id;
+
+          rb_thread_method_id_and_class(th, &called_id, &klass);
+
+          RUBY_DTRACE_FUNCTION_RETURN(
+                  RSTRING_PTR(rb_inspect(klass)),
+                  rb_id2name(called_id),
+                  rb_sourcefile(),
+                  rb_sourceline());
+        }
+    }
     EXEC_EVENT_HOOK(th, flag, GET_SELF(), 0, 0 /* TODO: id, klass */);
 }
 

@@ -18,6 +18,7 @@
 #include "ruby/encoding.h"
 #include "internal.h"
 #include "vm_core.h"
+#include "probes.h"
 
 #define numberof(array) (int)(sizeof(array) / sizeof((array)[0]))
 
@@ -587,6 +588,12 @@ rb_raise_jump(VALUE mesg)
     th->cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(th->cfp);
 
     setup_exception(th, TAG_RAISE, mesg);
+
+    if(RUBY_DTRACE_RAISE_ENABLED()) {
+        RUBY_DTRACE_RAISE(rb_obj_classname(th->errinfo),
+        rb_sourcefile(),
+        rb_sourceline());
+    }
 
     EXEC_EVENT_HOOK(th, RUBY_EVENT_C_RETURN, self, mid, klass);
     rb_thread_raised_clear(th);
