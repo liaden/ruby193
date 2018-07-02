@@ -282,6 +282,9 @@ fi
 if test x"${build}" != x"${host}"; then
   AC_CHECK_TOOL(CC, gcc)
 fi
+
+AC_CHECK_TOOL(DTRACE, dtrace)
+
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_GCC_TRADITIONAL
@@ -1455,7 +1458,7 @@ AC_CHECK_FUNCS(fmod killpg wait4 waitpid fork spawnv syscall __syscall chroot ge
 	      setuid setgid daemon select_large_fdset setenv unsetenv\
               mktime timegm gmtime_r clock_gettime gettimeofday poll ppoll\
               pread sendfile shutdown sigaltstack dl_iterate_phdr\
-              posix_memalign memalign)
+              dup3 pipe2 posix_memalign memalign)
 
 AC_CACHE_CHECK(for unsetenv returns a value, rb_cv_unsetenv_return_value,
   [AC_TRY_COMPILE([

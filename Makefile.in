@@ -61,7 +61,7 @@ LDFLAGS = @STATIC@ $(CFLAGS) @LDFLAGS@
 EXTLDFLAGS =
 XLDFLAGS = @XLDFLAGS@ $(EXTLDFLAGS)
 EXTLIBS =
-LIBS = @LIBS@ $(EXTLIBS)
+LIBS = -ljemalloc @LIBS@ $(EXTLIBS)
 MISSING = @LIBOBJS@ @ALLOCA@
 LDSHARED = @LIBRUBY_LDSHARED@
 DLDFLAGS = @LIBRUBY_DLDFLAGS@ $(EXTLDFLAGS) $(ARCH_FLAG)
@@ -135,6 +135,7 @@ OBJDUMP       = @OBJDUMP@
 OBJCOPY       = @OBJCOPY@
 VCS           = @VCS@
 VCSUP         = @VCSUP@
+DTRACE        = @DTRACE@
 
 OBJEXT        = @OBJEXT@
 ASMEXT        = S
@@ -163,13 +164,13 @@ all:
 
 miniruby$(EXEEXT):
 		@-if test -f $@; then $(MV) -f $@ $@.old; $(RM) $@.old; fi
-		$(ECHO) linking $@
-		$(Q) $(PURIFY) $(CC) $(LDFLAGS) $(XLDFLAGS) $(NORMALMAINOBJ) $(MINIOBJS) $(COMMONOBJS) $(DMYEXT) $(MAINLIBS) $(LIBS) $(OUTFLAG)$@
+		$(ECHO) linking $@ with $(COMMONOBJS)
+		$(Q) $(PURIFY) $(CC) $(LDFLAGS) $(XLDFLAGS) probes.o $(NORMALMAINOBJ) $(MINIOBJS) $(COMMONOBJS) $(DMYEXT) $(MAINLIBS) $(LIBS) $(OUTFLAG)$@
 
 $(PROGRAM):
 		@$(RM) $@
 		$(ECHO) linking $@
-		$(Q) $(PURIFY) $(CC) $(LDFLAGS) $(XLDFLAGS) $(MAINOBJ) $(EXTOBJS) $(LIBRUBYARG) $(MAINLIBS) $(LIBS) $(OUTFLAG)$@
+		$(Q) $(PURIFY) $(CC) $(LDFLAGS) $(XLDFLAGS) $(MAINOBJ) probes.o $(EXTOBJS) $(LIBRUBYARG) $(MAINLIBS) $(LIBS) $(OUTFLAG)$@
 		$(Q) $(POSTLINK)
 
 # We must `rm' the library each time this rule is invoked because "updating" a
@@ -178,13 +179,13 @@ $(PROGRAM):
 $(LIBRUBY_A):
 		@$(RM) $@
 		$(ECHO) linking static-library $@
-		$(Q) $(AR) $(ARFLAGS) $@ $(OBJS) $(DMYEXT)
+		$(Q) $(AR) $(ARFLAGS) $@ $(OBJS) probes.o $(DMYEXT)
 		@-$(RANLIB) $@ 2> /dev/null || true
 
 $(LIBRUBY_SO):
 		@-$(PRE_LIBRUBY_UPDATE)
 		$(ECHO) linking shared-library $@
-		$(Q) $(LDSHARED) $(DLDFLAGS) $(OBJS) $(DLDOBJS) $(SOLIBS) $(OUTFLAG)$@
+		$(Q) $(LDSHARED) $(DLDFLAGS) $(OBJS) probes.o $(DLDOBJS) $(SOLIBS) $(OUTFLAG)$@
 		-$(Q) $(OBJCOPY) -w -L '$(SYMBOL_PREFIX)Init_*' -L '$(SYMBOL_PREFIX)*_threadptr_*' $@
 		$(Q) $(POSTLINK)
 		@-$(MINIRUBY) -e 'ARGV.each{|link| File.delete link if File.exist? link; \
@@ -245,7 +246,7 @@ reconfig config.status:	$(srcdir)/configure $(srcdir)/enc/Makefile.in
 $(srcdir)/configure: $(srcdir)/configure.in
 	$(CHDIR) $(srcdir) && exec $(AUTOCONF)
 
-incs: id.h
+incs: id.h probes.h
 
 # Things which should be considered:
 # * with gperf v.s. without gperf
@@ -302,6 +303,16 @@ enc/unicode/name2ctype.h: enc/unicode/name2ctype.kwd
 	@$(ECHO) preprocessing $<
 	$(Q) $(CPP) $(XCFLAGS) $(CPPFLAGS) $(COUTFLAG)$@ -E $< > $@
 
+probes.h:
+	@$(ECHO) translating probes $<
+	$(Q)if test -n '$(DTRACE)'; then\
+          $(DTRACE) -h -s probes.d; \
+          dtrace -G -s probes.d; \
+	  sed -i'' -e 's/RUBY_/RUBY_DTRACE_/g' probes.h ; \
+	else \
+	  sed -f $(srcdir)/tool/gen_dummy_probes.sed $< > $@; \
+	fi
+
 clean-local::
 	$(Q)$(RM) ext/extinit.c ext/extinit.$(OBJEXT) ext/ripper/y.output
 	-$(Q)$(RM) $(pkgconfig_DATA)
@@ -329,7 +340,7 @@ clean-ext distclean-ext realclean-ext::
 	done
 
 distclean-ext realclean-ext::
-	-$(Q)$(RMDIR) ext 2> /dev/null || true
+	-.h$(Q)$(RMDIR) ext 2> /dev/null || true
 
 clean-extout:
 	-$(Q)$(RMDIRS) $(EXTOUT) 2> /dev/null || true
