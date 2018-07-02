@@ -68,6 +68,18 @@ vm_call0(rb_thread_t* th, VALUE recv, VALUE id, int argc, const VALUE *argv,
       }
       case VM_METHOD_TYPE_NOTIMPLEMENTED:
       case VM_METHOD_TYPE_CFUNC: {
+  if (RUBY_DTRACE_FUNCTION_ENTRY_ENABLED()) {
+      const char * classname  = rb_class2name(klass);
+      const char * methodname = rb_id2name(id);
+      const char * filename   = rb_sourcefile();
+      if (classname && methodname && filename) {
+        RUBY_DTRACE_FUNCTION_ENTRY(
+                classname,
+                methodname,
+                filename,
+                rb_sourceline());
+      }
+  }
 	EXEC_EVENT_HOOK(th, RUBY_EVENT_C_CALL, recv, id, klass);
 	{
 	    rb_control_frame_t *reg_cfp = th->cfp;
@@ -83,6 +95,19 @@ vm_call0(rb_thread_t* th, VALUE recv, VALUE id, int argc, const VALUE *argv,
 	    }
 	    vm_pop_frame(th);
 	}
+  if (RUBY_DTRACE_FUNCTION_RETURN_ENABLED()) {
+      const char * classname  = rb_class2name(klass);
+      const char * methodname = rb_id2name(id);
+      const char * filename   = rb_sourcefile();
+      if (classname && methodname && filename) {
+        RUBY_DTRACE_FUNCTION_RETURN(
+                classname,
+                methodname,
+                filename,
+                rb_sourceline());
+      }
+  }
+
 	EXEC_EVENT_HOOK(th, RUBY_EVENT_C_RETURN, recv, id, klass);
 	break;
       }
@@ -554,7 +579,7 @@ raise_method_missing(rb_thread_t *th, int argc, const VALUE *argv, VALUE obj,
 	exc = rb_class_new_instance(n, args, exc);
 
 	if (!(last_call_status & NOEX_MISSING)) {
-	    th->cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(th->cfp);
+	    rb_frame_pop();
 	}
 	rb_exc_raise(exc);
     }

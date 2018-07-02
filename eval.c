@@ -18,6 +18,7 @@
 #include "ruby/encoding.h"
 #include "internal.h"
 #include "vm_core.h"
+#include "probes.h"
 
 #define numberof(array) (int)(sizeof(array) / sizeof((array)[0]))
 
@@ -380,8 +381,7 @@ setup_exception(rb_thread_t *th, int tag, volatile VALUE mesg)
     if (file) line = rb_sourceline();
     if (file && !NIL_P(mesg)) {
 	if (mesg == sysstack_error) {
-	    at = rb_enc_sprintf(rb_usascii_encoding(), "%s:%d", file, line);
-	    at = rb_ary_new3(1, at);
+	    at = rb_make_backtrace();
 	    rb_iv_set(mesg, "bt", at);
 	}
 	else {
@@ -588,6 +588,12 @@ rb_raise_jump(VALUE mesg)
     th->cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(th->cfp);
 
     setup_exception(th, TAG_RAISE, mesg);
+
+    if(RUBY_DTRACE_RAISE_ENABLED()) {
+        RUBY_DTRACE_RAISE(rb_obj_classname(th->errinfo),
+        rb_sourcefile(),
+        rb_sourceline());
+    }
 
     EXEC_EVENT_HOOK(th, RUBY_EVENT_C_RETURN, self, mid, klass);
     rb_thread_raised_clear(th);
@@ -824,7 +830,12 @@ rb_frame_caller(void)
 void
 rb_frame_pop(void)
 {
+    ID mid;
+    VALUE klass;
     rb_thread_t *th = GET_THREAD();
+    if (rb_thread_method_id_and_class(th, &mid, &klass)) {
+        EXEC_EVENT_HOOK(th, RUBY_EVENT_C_RETURN, klass, mid, klass);
+    }
     th->cfp = RUBY_VM_PREVIOUS_CONTROL_FRAME(th->cfp);
 }
 

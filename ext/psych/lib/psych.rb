@@ -18,10 +18,12 @@ require 'psych/handlers/document_stream'
 ###
 # = Overview
 #
-# Psych is a YAML parser and emitter.  Psych leverages
-# libyaml[http://libyaml.org] for it's YAML parsing and emitting capabilities.
-# In addition to wrapping libyaml, Psych also knows how to serialize and
-# de-serialize most Ruby objects to and from the YAML format.
+# Psych is a YAML parser and emitter.
+# Psych leverages libyaml [Home page: http://pyyaml.org/wiki/LibYAML]
+# or [Git repo: https://github.com/zerotao/libyaml] for its YAML parsing
+# and emitting capabilities. In addition to wrapping libyaml, Psych also
+# knows how to serialize and de-serialize most Ruby objects to and from
+# the YAML format.
 #
 # = I NEED TO PARSE OR EMIT YAML RIGHT NOW!
 #
@@ -93,7 +95,7 @@ require 'psych/handlers/document_stream'
 
 module Psych
   # The version is Psych you're using
-  VERSION         = '1.3.4'
+  VERSION         = '2.0.0'
 
   # The version of libyaml Psych is using
   LIBYAML_VERSION = Psych.libyaml_version.join '.'
@@ -121,7 +123,7 @@ module Psych
   #     Psych.load("--- `", "file.txt")
   #   rescue Psych::SyntaxError => ex
   #     ex.file    # => 'file.txt'
-  #     ex.message # => "(foo.txt): found character that cannot start any token"
+  #     ex.message # => "(file.txt): found character that cannot start any token"
   #   end
   def self.load yaml, filename = nil
     result = parse(yaml, filename)
@@ -143,7 +145,7 @@ module Psych
   #     Psych.parse("--- `", "file.txt")
   #   rescue Psych::SyntaxError => ex
   #     ex.file    # => 'file.txt'
-  #     ex.message # => "(foo.txt): found character that cannot start any token"
+  #     ex.message # => "(file.txt): found character that cannot start any token"
   #   end
   #
   # See Psych::Nodes for more information about YAML AST.
@@ -193,7 +195,7 @@ module Psych
   #     Psych.parse_stream("--- `", "file.txt")
   #   rescue Psych::SyntaxError => ex
   #     ex.file    # => 'file.txt'
-  #     ex.message # => "(foo.txt): found character that cannot start any token"
+  #     ex.message # => "(file.txt): found character that cannot start any token"
   #   end
   #
   # See Psych::Nodes for more information about YAML AST.

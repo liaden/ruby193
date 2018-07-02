@@ -20,7 +20,7 @@ class TestPsych < Psych::TestCase
 
   def test_canonical
     yml = Psych.dump({:a => {'b' => 'c'}}, {:canonical => true})
-    assert_match(/\? ! "b/, yml)
+    assert_match(/\? "b/, yml)
   end
 
   def test_header
@@ -68,6 +68,7 @@ class TestPsych < Psych::TestCase
       assert_equal io, Psych.dump(hash, io)
       io.rewind
       assert_equal Psych.dump(hash), io.read
+      io.close(true)
     end
   end
 

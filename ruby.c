@@ -1366,7 +1366,8 @@ process_options(int argc, char **argv, struct cmdline_options *opt)
 	long i;
 	VALUE load_path = GET_VM()->load_path;
 	for (i = 0; i < RARRAY_LEN(load_path); ++i) {
-	    rb_enc_associate(RARRAY_PTR(load_path)[i], lenc);
+	    RARRAY_PTR(load_path)[i] =
+		rb_enc_associate(rb_str_dup(RARRAY_PTR(load_path)[i]), lenc);
 	}
     }
     if (!(opt->disable & DISABLE_BIT(gems))) {
@@ -1500,6 +1501,7 @@ process_options(int argc, char **argv, struct cmdline_options *opt)
 
     rb_set_safe_level(opt->safe_level);
     rb_gc_set_params();
+    rb_fiber_set_stack_params();
 
     return iseq;
 }

@@ -21,6 +21,7 @@
 #include <float.h>
 #include "constant.h"
 #include "internal.h"
+#include "probes.h"
 
 VALUE rb_cBasicObject;
 VALUE rb_mKernel;
@@ -236,17 +237,8 @@ init_copy(VALUE dest, VALUE obj)
         break;
       case T_CLASS:
       case T_MODULE:
-	if (RCLASS_IV_TBL(dest)) {
-	    st_free_table(RCLASS_IV_TBL(dest));
-	    RCLASS_IV_TBL(dest) = 0;
-	}
-	if (RCLASS_CONST_TBL(dest)) {
-	    rb_free_const_table(RCLASS_CONST_TBL(dest));
-	    RCLASS_CONST_TBL(dest) = 0;
-	}
-	if (RCLASS_IV_TBL(obj)) {
-	    RCLASS_IV_TBL(dest) = st_copy(RCLASS_IV_TBL(obj));
-	}
+        rb_free_const_table(RCLASS_CONST_TBL(dest));
+        sa_copy_to(RCLASS_IV_TBL(obj), RCLASS_IV_TBL(dest));
         break;
     }
 }
@@ -537,7 +529,7 @@ rb_obj_is_kind_of(VALUE obj, VALUE c)
     }
 
     while (cl) {
-	if (cl == c || RCLASS_M_TBL(cl) == RCLASS_M_TBL(c))
+	if (cl == c || RCLASS_EXT(cl) == RCLASS_EXT(c))
 	    return Qtrue;
 	cl = RCLASS_SUPER(cl);
     }
@@ -1363,13 +1355,13 @@ rb_class_inherited_p(VALUE mod, VALUE arg)
 	rb_raise(rb_eTypeError, "compared with non class/module");
     }
     while (mod) {
-	if (RCLASS_M_TBL(mod) == RCLASS_M_TBL(arg))
+	if (RCLASS_EXT(mod) == RCLASS_EXT(arg))
 	    return Qtrue;
 	mod = RCLASS_SUPER(mod);
     }
     /* not mod < arg; check if mod > arg */
     while (arg) {
-	if (RCLASS_M_TBL(arg) == RCLASS_M_TBL(start))
+	if (RCLASS_EXT(arg) == RCLASS_EXT(start))
 	    return Qfalse;
 	arg = RCLASS_SUPER(arg);
     }
@@ -1608,7 +1600,23 @@ rb_obj_alloc(VALUE klass)
     if (FL_TEST(klass, FL_SINGLETON)) {
 	rb_raise(rb_eTypeError, "can't create instance of singleton class");
     }
+
+    if (RUBY_DTRACE_OBJECT_CREATE_START_ENABLED()) {
+        const char * file = rb_sourcefile();
+        RUBY_DTRACE_OBJECT_CREATE_START(rb_class2name(klass),
+                                 file ? file : "",
+                                 rb_sourceline());
+    }
+
     obj = rb_funcall(klass, ID_ALLOCATOR, 0, 0);
+
+    if (RUBY_DTRACE_OBJECT_CREATE_DONE_ENABLED()) {
+        const char * file = rb_sourcefile();
+        RUBY_DTRACE_OBJECT_CREATE_DONE(rb_class2name(klass),
+                                 file ? file : "",
+                                 rb_sourceline());
+    }
+
     if (rb_obj_class(obj) != rb_class_real(klass)) {
 	rb_raise(rb_eTypeError, "wrong instance allocation");
     }
