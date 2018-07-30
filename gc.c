@@ -4845,6 +4845,8 @@ Init_GC(void)
     rb_define_singleton_method(rb_mGC, "heap_slots", rb_gc_heap_slots, 0);
     rb_define_singleton_method(rb_mGC, "heap_slots_live_after_last_gc", rb_gc_heap_slots_live_after_last_gc, 0);
     rb_define_const(rb_mGC, "HEAP_SLOT_SIZE", INT2FIX(sizeof(RVALUE)));
+    rb_define_const(rb_mGC, "HEAP_OBJ_LIMIT", INT2FIX(HEAP_OBJ_LIMIT));
+    rb_define_const(rb_mGC, "HEAP_SIZE", INT2FIX(HEAP_SIZE));
 
     rb_define_singleton_method(rb_mGC, "log", rb_gc_log, 1);
     rb_define_singleton_method(rb_mGC, "log_file", rb_gc_log_file, -1);
