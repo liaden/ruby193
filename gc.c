@@ -1703,6 +1703,12 @@ rb_gc_heap_slots_live_after_last_gc()
     return ULONG2NUM(live_after_last_mark_phase);
 }
 
+VALUE
+rb_gc_free_count()
+{
+    rb_objspace_t *objspace = &rb_objspace;
+    return ULONG2NUM(heaps_used * HEAP_OBJ_LIMIT - objspace->heap.live_num);
+}
 
 
 VALUE rb_mGC;
@@ -4644,6 +4650,19 @@ gc_malloc_allocations(VALUE self)
 {
     return UINT2NUM((&rb_objspace)->malloc_params.allocations);
 }
+#else
+
+static VALUE
+gc_malloc_growth(VALUE self)
+{
+    return UINT2NUM(rb_objspace.malloc_params.increase);
+}
+
+static VALUE
+gc_malloc_limit(VALUE self)
+{
+    return UINT2NUM(rb_objspace.malloc_params.limit);
+}
 #endif
 
 static VALUE
@@ -4844,6 +4863,8 @@ Init_GC(void)
     rb_define_singleton_method(rb_mGC, "num_allocations", rb_gc_num_allocations, 0);
     rb_define_singleton_method(rb_mGC, "heap_slots", rb_gc_heap_slots, 0);
     rb_define_singleton_method(rb_mGC, "heap_slots_live_after_last_gc", rb_gc_heap_slots_live_after_last_gc, 0);
+    rb_define_singleton_method(rb_mGC, "free_slots", rb_gc_free_count, 0);
+
     rb_define_const(rb_mGC, "HEAP_SLOT_SIZE", INT2FIX(sizeof(RVALUE)));
     rb_define_const(rb_mGC, "HEAP_OBJ_LIMIT", INT2FIX(HEAP_OBJ_LIMIT));
     rb_define_const(rb_mGC, "HEAP_SIZE", INT2FIX(HEAP_SIZE));
@@ -4895,5 +4916,8 @@ Init_GC(void)
 #if CALC_EXACT_MALLOC_SIZE
     rb_define_singleton_method(rb_mGC, "malloc_allocated_size", gc_malloc_allocated_size, 0);
     rb_define_singleton_method(rb_mGC, "malloc_allocations", gc_malloc_allocations, 0);
+#else
+    rb_define_singleton_method(rb_mGC, "growth", gc_malloc_growth, 0);
+    rb_define_singleton_method(rb_mGC, "limit", gc_malloc_limit, 0);
 #endif
 }
