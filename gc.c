@@ -3266,7 +3266,7 @@ gc_lazy_sweep(rb_objspace_t *objspace)
     during_gc++;
     GC_PROF_TIMER_START;
     if (RUBY_DTRACE_GC_SWEEP_BEGIN_ENABLED()) {
-        RUBY_DTRACE_GC_BEGIN();
+        RUBY_DTRACE_GC_SWEEP_BEGIN();
     }
     GC_PROF_SWEEP_TIMER_START;
 
