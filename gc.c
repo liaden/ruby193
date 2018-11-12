@@ -262,6 +262,16 @@ getrusage_time(void)
 	    record->allocate_limit = malloc_limit; \
 	}\
     } while(0)
+#else
+#define INIT_GC_PROF_PARAMS double gc_time = 0;\
+    size_t count = objspace->profile.count, total = 0, live = 0
+#define GC_PROF_MARK_TIMER_START
+#define GC_PROF_MARK_TIMER_STOP
+#define GC_PROF_SWEEP_TIMER_START
+#define GC_PROF_SWEEP_TIMER_STOP
+#define GC_PROF_SET_MALLOC_INFO
+#endif
+
 #define GC_PROF_SET_HEAP_INFO(record) do {\
         live = objspace->heap.live_num;\
         total = heaps_used * HEAP_OBJ_LIMIT;\
@@ -275,24 +285,6 @@ getrusage_time(void)
     } while(0)
 #define GC_PROF_INC_LIVE_NUM objspace->heap.live_num++
 #define GC_PROF_DEC_LIVE_NUM objspace->heap.live_num--
-#else
-#define INIT_GC_PROF_PARAMS double gc_time = 0;\
-    size_t count = objspace->profile.count, total = 0, live = 0
-#define GC_PROF_MARK_TIMER_START
-#define GC_PROF_MARK_TIMER_STOP
-#define GC_PROF_SWEEP_TIMER_START
-#define GC_PROF_SWEEP_TIMER_STOP
-#define GC_PROF_SET_MALLOC_INFO
-#define GC_PROF_SET_HEAP_INFO(record) do {\
-        live = objspace->heap.live_num;\
-        total = heaps_used * HEAP_OBJ_LIMIT;\
-        (record).heap_total_objects = total;\
-        (record).heap_use_size = live * sizeof(RVALUE);\
-        (record).heap_total_size = total * sizeof(RVALUE);\
-    } while(0)
-#define GC_PROF_INC_LIVE_NUM
-#define GC_PROF_DEC_LIVE_NUM
-#endif
 
 #if defined(_MSC_VER) || defined(__BORLANDC__) || defined(__CYGWIN__)
 #pragma pack(push, 1) /* magic for reducing sizeof(RVALUE): 24 -> 20 */
